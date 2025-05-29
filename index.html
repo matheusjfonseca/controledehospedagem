@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="shortcut icon" href="oscar.png" type="image/x-icon">
+<title>Controle de Hospedagem</title>
+<style>
+  body {
+    display: flex;
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f0f0f0;
+  }
+  .sidebar {
+    width: 200px;
+    background-color: #333;
+    color: white;
+    padding: 20px;
+    height: 100vh;
+  }
+  .main {
+    flex: 1;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    background-color: #222;
+    color: #fff;
+    padding: 10px;
+    margin-bottom: 20px;
+  }
+  .date-picker {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    vertical-align: top;
+  }
+  th {
+    background-color: #444;
+    color: white;
+  }
+  input[type="text"], select, textarea {
+    width: 100%;
+    padding: 5px;
+    margin-bottom: 5px;
+    box-sizing: border-box;
+  }
+  .add-btn, .save-btn, .toggle-observacoes-btn {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+  .saida td input, .saida td select {
+    color: red;
+  }
+  #rodapeObservacoes {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #eee;
+    display: none;
+  }
+  .remove-btn {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="sidebar">
+    <h3>Selecionar Data</h3>
+    <input type="date" id="dataSelecionada">
+    <button class="remove-btn" onclick="removerUltimaHospedagem()">Remover Última Hospedagem</button>
+  </div>
+
+  <div class="main">
+    <h1>HOSPEDAGEM</h1>
+    <div class="date-picker">
+      Data: <input type="date" id="dataTopo">
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>INFORMAÇÕES</th>
+          <th>NOMES</th>
+          <th>DOCUMENTOS</th>
+        </tr>
+      </thead>
+      <tbody id="tabela-hospedagem"></tbody>
+    </table>
+    <button class="add-btn" onclick="adicionarEntrada()">Adicionar Entrada</button>
+    <button class="save-btn" onclick="salvarTabela()">Salvar Tabela</button>
+    <button class="toggle-observacoes-btn" onclick="alternarObservacoes()">Ativar/Desativar Observações</button>
+
+    <div id="rodapeObservacoes">
+      <h3>Observações</h3>
+      <textarea id="observacoes" placeholder="Escreva suas observações aqui..." style="min-height: 100px; resize: vertical;"></textarea>
+    </div>
+  </div>
+
+<script>
+  function adicionarEntrada(dados = {}) {
+    const tbody = document.getElementById("tabela-hospedagem");
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>
+        <select onchange="atualizarCorLinha(this)">
+          <option value="Entrada" ${dados.horario === "Entrada" ? "selected" : ""}>Entrada</option>
+          <option value="Saída" ${dados.horario === "Saída" ? "selected" : ""}>Saída</option>
+        </select><br>
+        <input type="text" placeholder="Apartamento" value="${dados.apartamento || ''}"><br>
+        <input type="text" placeholder="Horário" value="${dados.hora || ''}"><br>
+        <input type="text" placeholder="Veículo" value="${dados.veiculo || ''}">
+      </td>
+      <td>
+        ${[...Array(5)].map((_, i) => `<input type="text" placeholder="Nome" value="${dados[`nome${i}`] || ''}">`).join('')}
+      </td>
+      <td>
+        ${[...Array(5)].map((_, i) => `<input type="text" placeholder="Documento" value="${dados[`doc${i}`] || ''}">`).join('')}
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+    const select = tr.querySelector("select");
+    atualizarCorLinha(select);
+  }
+
+  function atualizarCorLinha(selectElement) {
+    const tr = selectElement.closest("tr");
+    if (selectElement.value === "Saída") {
+      tr.classList.add("saida");
+    } else {
+      tr.classList.remove("saida");
+    }
+  }
+
+  function salvarTabela() {
+    const linhas = document.querySelectorAll("#tabela-hospedagem tr");
+    const dados = [];
+    linhas.forEach(tr => {
+      const inputs = tr.querySelectorAll("input");
+      const select = tr.querySelector("select");
+      const linha = {
+        horario: select.value,
+        apartamento: inputs[0].value,
+        hora: inputs[1].value,
+        veiculo: inputs[2].value
+      };
+      for (let i = 0; i < 5; i++) {
+        linha[`nome${i}`] = inputs[3 + i].value;
+        linha[`doc${i}`] = inputs[8 + i].value;
+      }
+      dados.push(linha);
+    });
+
+    const data = document.getElementById("dataSelecionada").value;
+    localStorage.setItem(`hospedagem_${data}`, JSON.stringify(dados));
+
+    const obs = document.getElementById("observacoes").value;
+    localStorage.setItem(`observacoes_${data}`, obs);
+
+    alert("Tabela e observações salvas!");
+  }
+
+  function carregarTabelaPorData() {
+    const tbody = document.getElementById("tabela-hospedagem");
+    tbody.innerHTML = "";
+    const data = document.getElementById("dataSelecionada").value;
+    const dados = JSON.parse(localStorage.getItem(`hospedagem_${data}`)) || [];
+    dados.forEach(d => adicionarEntrada(d));
+
+    const obs = localStorage.getItem(`observacoes_${data}`) || "";
+    document.getElementById("observacoes").value = obs;
+  }
+
+  // Sincroniza os campos de data
+  document.getElementById("dataTopo").addEventListener("change", () => {
+    const data = document.getElementById("dataTopo").value;
+    document.getElementById("dataSelecionada").value = data;
+    carregarTabelaPorData();
+  });
+
+  document.getElementById("dataSelecionada").addEventListener("change", () => {
+    const data = document.getElementById("dataSelecionada").value;
+    document.getElementById("dataTopo").value = data;
+    carregarTabelaPorData();
+  });
+
+  function alternarObservacoes() {
+    const rodape = document.getElementById("rodapeObservacoes");
+    rodape.style.display = rodape.style.display === "none" ? "block" : "none";
+  }
+
+  window.addEventListener("load", () => {
+    const hoje = new Date().toISOString().split("T")[0];
+    document.getElementById("dataSelecionada").value = hoje;
+    document.getElementById("dataTopo").value = hoje;
+    carregarTabelaPorData();
+  });
+
+  function removerUltimaHospedagem() {
+    const tbody = document.getElementById("tabela-hospedagem");
+    const linhas = tbody.querySelectorAll("tr");
+
+    if (linhas.length === 0) {
+      alert("Não há hospedagens para remover.");
+      return;
+    }
+
+    if (confirm("Tem certeza que deseja remover a última hospedagem?")) {
+      tbody.removeChild(linhas[linhas.length - 1]);
+      salvarTabela();
+      alert("Última hospedagem removida!");
+    }
+  }
+
+  window.addEventListener("beforeunload", salvarTabela);
+</script>
+</body>
+</html>
